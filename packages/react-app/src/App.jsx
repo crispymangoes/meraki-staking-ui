@@ -1,4 +1,4 @@
-import { Button, Col, Menu, Row } from "antd";
+import { Button, Col, Menu, Row, Card, Divider, Input } from "antd";
 import "antd/dist/antd.css";
 import {
   useBalance,
@@ -32,7 +32,7 @@ import { Transactor, Web3ModalSetup } from "./helpers";
 import { Home, ExampleUI, Hints, Subgraph } from "./views";
 import { useStaticJsonRPC } from "./hooks";
 
-const { ethers } = require("ethers");
+const { ethers, utils } = require("ethers");
 /*
     Welcome to 🏗 scaffold-eth !
 
@@ -130,7 +130,7 @@ function App(props) {
   const selectedChainId =
     userSigner && userSigner.provider && userSigner.provider._network && userSigner.provider._network.chainId;
 
-  // For more hooks, check out 🔗eth-hooks at: https://www.npmjs.com/package/eth-hooks
+  // For more hooks, check out 🔗eth-hooks at: https://www.npmjs.com/package/eth-hooks\
 
   // The transactor wraps transactions and provides notificiations
   const tx = Transactor(userSigner, gasPrice);
@@ -168,6 +168,9 @@ function App(props) {
 
   // keep track of a variable from the contract in the local React state:
   const purpose = useContractReader(readContracts, "YourContract", "purpose");
+
+  const userBal = useContractReader(readContracts, "TestMeraki", "balanceOf", [address]);
+  console.log("Meraki Token Balance: ", userBal);
 
   /*
   const addressFromENS = useResolveName(mainnetProvider, "austingriffith.eth");
@@ -244,6 +247,27 @@ function App(props) {
 
   const faucetAvailable = localProvider && localProvider.connection && targetNetwork.name.indexOf("local") !== -1;
 
+  const olympusAddress = readContracts && readContracts.Olympus && readContracts.Olympus.address;
+
+  const olympusApproval = useContractReader(readContracts, "TestMeraki", "isApprovedForAll", [
+    address, olympusAddress
+  ]);
+  console.log("🤏 olympusApproval",olympusApproval)
+
+  const [idsToStake, setIdsToStake] = useState({
+    valid: false,
+    value: ''
+  });
+  const [isOlympusApproved, setIsOlympusApproved] = useState();
+  useEffect(()=>{
+    console.log("idsToStake",idsToStake.value)
+    setIsOlympusApproved(olympusApproval && idsToStake.value && olympusApproval)
+  },[idsToStake, readContracts])
+  console.log("isOlympusApproved",isOlympusApproved)
+
+  const [buying, setBuying] = useState();
+
+
   return (
     <div className="App">
       {/* ✏️ Edit the header and change the title to your project name */}
@@ -280,7 +304,80 @@ function App(props) {
       <Switch>
         <Route exact path="/">
           {/* pass in any web3 props to this Home component. For example, yourLocalBalance */}
-          <Home yourLocalBalance={yourLocalBalance} readContracts={readContracts} />
+          {/*<Home yourLocalBalance={yourLocalBalance} readContracts={readContracts} />*/}
+          
+          <div style={{ padding: 8, marginTop: 32, width: 300, margin: "auto" }}>
+              <Card title="Stake Meraki Tokens">
+                <div style={{ padding: 8 }}>{userBal && userBal.toNumber()} Wallet Balance</div>
+
+                <div style={{ padding: 8 }}>
+                  <Input
+                    style={{ textAlign: "center" }}
+                    placeholder={"Token Ids to stake"}
+                    value={idsToStake.value}
+                    onChange={e => {
+                      const newValue = e.target.value;
+                      const ids = {
+                        value: newValue,
+                        valid: true
+                      }
+                      setIdsToStake(ids)
+                    }}
+                  />
+                </div>
+                {isOlympusApproved?
+
+                  <div style={{ padding: 8 }}>
+                    <Button
+                      disabled={true}
+                      type={"primary"}
+                    >
+                      Approve All
+                    </Button>
+                    <Button
+                      type={"primary"}
+                      loading={buying}
+                      onClick={async () => {
+                        setBuying(true);
+                        await tx(writeContracts.Olympus.stake(idsToStake.value.split(",")));
+                        setBuying(false);
+                        setIdsToStake([]);
+                      }}
+                      disabled={!idsToStake.valid}
+                    >
+                      Stake Tokens
+                    </Button>
+                  </div>
+                  :
+                  <div style={{ padding: 8 }}>
+                    <Button
+                      type={"primary"}
+                      loading={buying}
+                      onClick={async () => {
+                        setBuying(true);
+                        await tx(writeContracts.TestMeraki.setApprovalForAll(readContracts.Olympus.address, true));
+                        setBuying(false);
+                        let resetAmount = idsToStake
+                        setIdsToStake('');
+                        setTimeout(()=>{
+                          setIdsToStake(resetAmount)
+                        },1500)
+                      }}
+                      disabled={!idsToStake.valid}
+                      >
+                      Approve All
+                    </Button>
+                    <Button
+                      disabled={true}
+                      type={"primary"}
+                    >
+                      Stake Tokens
+                    </Button>
+                  </div>
+                    }
+              </Card>
+          </div>
+                
         </Route>
         <Route exact path="/debug">
           {/*
@@ -290,7 +387,25 @@ function App(props) {
             */}
 
           <Contract
-            name="YourContract"
+            name="TestMeraki"
+            price={price}
+            signer={userSigner}
+            provider={localProvider}
+            address={address}
+            blockExplorer={blockExplorer}
+            contractConfig={contractConfig}
+          />
+          <Contract
+            name="Olympus"
+            price={price}
+            signer={userSigner}
+            provider={localProvider}
+            address={address}
+            blockExplorer={blockExplorer}
+            contractConfig={contractConfig}
+          />
+          <Contract
+            name="OlympusAggregator"
             price={price}
             signer={userSigner}
             provider={localProvider}
