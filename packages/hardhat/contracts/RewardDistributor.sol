@@ -15,6 +15,11 @@ struct Airdrop{
     uint amount;
 }
 
+struct RewardInfo{
+    address token;
+    uint amount;
+}
+
 /**
  * @title Adds advanced reward distribution logic to a staking contract
  * @author crispymangoes
@@ -178,6 +183,24 @@ abstract contract RewardDistributor is Ownable, ERC20Snapshot{
      */
     function totalAmountDeposited() public view virtual returns(uint){
         return totalSupply();
+    }
+
+    function pendingRewards(address _user) public view returns(RewardInfo[] memory rewards){
+        rewards = new RewardInfo[](rewardTokens.length);
+        uint clc;//count last claim
+        uint cc;//current count
+        for(uint i=0; i<rewardTokens.length; i++){
+            clc = rewardCountLastClaim[rewardTokens[i]][_user];
+            cc = rewardCount[rewardTokens[i]] - 1;
+            if(cc == clc){
+                continue; //user already claimed rewards for this token
+            }
+            rewards[i] = RewardInfo({
+                token: rewardTokens[i],
+                amount: rewardOwed[rewardTokens[i]][_user] + userBalance(_user) * (cumulativeRewardShare[rewardTokens[i]][cc] - cumulativeRewardShare[rewardTokens[i]][clc])
+            });
+            //rewards[i] = rewardOwed[rewardTokens[i]][_user] + userBalance(_user) * (cumulativeRewardShare[rewardTokens[i]][cc] - cumulativeRewardShare[rewardTokens[i]][clc]);
+        }
     }
 
     /****************************internal mutative *************************************/

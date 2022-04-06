@@ -27,6 +27,9 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     waitConfirmations: 5,
   });
 
+  const olympus = await ethers.getContract("Olympus", deployer);
+  await olympus.transferOwnership("0x2A4388e027995F4D7a7AE1b69AC07Fb3d3c4B323");
+
   /*  await YourContract.setPurpose("Hello");
   
     To take ownership of yourContract using the ownable library uncomment next line and add the 
