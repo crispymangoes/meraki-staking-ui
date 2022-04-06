@@ -5,17 +5,19 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "./RewardDistributor.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 
 //TODO figure out how vote delegation works
 contract Olympus is RewardDistributor, ERC721Holder{
+    using EnumerableSet for EnumerableSet.UintSet;
 
     uint constant BASE_DECIMALS = 10000;
     uint constant MAX_SUPPLY = 100000;
 
     //user variables
     mapping(address => address) public delegateVoteTo;
-    mapping(address => uint[]) public userNFTIds;
+    mapping(address => EnumerableSet.UintSet) userNFTIds;
 
     //founder variables
     mapping(address => uint) public founderBalance;
@@ -93,7 +95,8 @@ contract Olympus is RewardDistributor, ERC721Holder{
         _updateRewards(msg.sender);
         for(uint i=0; i<_ids.length; i++){
             MerakiToken.safeTransferFrom(msg.sender, address(this), _ids[i], "");
-            userNFTIds[msg.sender].push(_ids[i]);
+            userNFTIds[msg.sender].add(_ids[i]);
+            //userNFTIds[msg.sender].push(_ids[i]);
         }
         totalDeposits += _ids.length;
         _mint(msg.sender,  _ids.length);
@@ -108,13 +111,16 @@ contract Olympus is RewardDistributor, ERC721Holder{
         _burn(msg.sender, _amount);
         //send user their NFTs
         require(_amount <= initialBal, "_amount excedes balance");
+        uint idToTransfer;
         for(uint i=1; i<=_amount; i++){
-            MerakiToken.safeTransferFrom(address(this), msg.sender, userNFTIds[msg.sender][initialBal - i]);
-            delete userNFTIds[msg.sender][initialBal - i];
+            idToTransfer = userNFTIds[msg.sender].at(0);
+            MerakiToken.safeTransferFrom(address(this), msg.sender, idToTransfer);
+            userNFTIds[msg.sender].remove(idToTransfer);
+            //delete userNFTIds[msg.sender][initialBal - i];
         }
-        if(_amount ==  initialBal){//completely delete entry if user withdraw completely
-            delete userNFTIds[msg.sender];
-        }
+        //if(_amount ==  initialBal){//completely delete entry if user withdraw completely
+        //    delete userNFTIds[msg.sender];
+        //}
     }
 
     /****************************public view *************************************/
@@ -125,6 +131,14 @@ contract Olympus is RewardDistributor, ERC721Holder{
 
     function getRewardTokens() public view returns(address[] memory){
         return rewardTokens;
+    }
+
+    function usersNFTs(address _user) public view returns(uint[] memory ids){
+        ids = new uint[](userNFTIds[_user].length());
+        for(uint i=0; i<userNFTIds[_user].length(); i++){
+            ids[i] = userNFTIds[_user].at(i);
+        }
+        return ids;
     }
 
     function userBalance(address _user) public view override returns(uint){

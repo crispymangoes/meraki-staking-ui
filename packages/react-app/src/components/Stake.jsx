@@ -53,8 +53,8 @@ export default function Stake({
       const [isOlympusApproved, setIsOlympusApproved] = useState();
       useEffect(()=>{
         console.log("idsToStake",idsToStake.value)
-        setIsOlympusApproved(olympusApproval && idsToStake.value && olympusApproval)
-      },[idsToStake, readContracts])
+        setIsOlympusApproved(olympusApproval && olympusApproval)
+      },[olympusApproval, readContracts])
       console.log("isOlympusApproved",isOlympusApproved)
     
       const [requestOut, setRequestOut] = useState({
@@ -123,10 +123,10 @@ export default function Stake({
                             placeholder={"Token Ids to stake"}
                             value={idsToStake.value}
                             onChange={e => {
-                              const newValue = e.target.value;
+                              const newValue = e.target.value.replace(/[^\d,]/g, ''); //makes it so only numbers, and , can be in the input
                               const ids = {
                                 value: newValue,
-                                valid: true
+                                valid: newValue.charAt(0) != ',' && newValue.charAt(newValue.length-1) != ','
                               }
                               setIdsToStake(ids)
                             }}
@@ -139,7 +139,7 @@ export default function Stake({
                             placeholder={"Amount of tokens to remove"}
                             value={requestOut.value}
                             onChange={e => {
-                              const newValue = e.target.value;
+                              const newValue = e.target.value.replace(/\D/g, '');
                               const req = {
                                 value: newValue,
                                 valid: /^\d*\.?\d+$/.test(newValue)//wtf does this do?
@@ -189,7 +189,7 @@ export default function Stake({
                                 setIdsToStake(resetAmount)
                               },1500)
                             }}
-                            disabled={!idsToStake.valid}
+                            disabled={isOlympusApproved}
                             >
                             Approve All
                           </Button>
