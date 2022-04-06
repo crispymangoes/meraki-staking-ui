@@ -203,6 +203,24 @@ abstract contract RewardDistributor is Ownable, ERC20Snapshot{
         }
     }
 
+    //returns a sum of all reward tokens owed useful for updating UI state
+    function rewardStateUpdate(address _user) public view returns(uint totalRewardBalance){
+        uint clc;//count last claim
+        uint cc;//current count
+        for(uint i=0; i<rewardTokens.length; i++){
+            clc = rewardCountLastClaim[rewardTokens[i]][_user];
+            cc = rewardCount[rewardTokens[i]] - 1;
+            if(cc == clc){
+                continue; //user already claimed rewards for this token
+            }
+            totalRewardBalance += rewardOwed[rewardTokens[i]][_user] + userBalance(_user) * (cumulativeRewardShare[rewardTokens[i]][cc] - cumulativeRewardShare[rewardTokens[i]][clc]);
+        }
+    }
+
+    function rewardLength() public view returns(uint){
+        return rewardTokens.length;
+    }
+
     /****************************internal mutative *************************************/
     /**
      * @dev must be called before a users deposit changes, and before a user claims rewards

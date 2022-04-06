@@ -103,10 +103,10 @@ contract Olympus is RewardDistributor, ERC721Holder{
         require(_amount > 0, "Meraki: _amount is zero");
         //update reward info
         _updateRewards(msg.sender);
+        uint initialBal = balanceOf(msg.sender);//was the Length of userNFTIds
         totalDeposits -= _amount;
         _burn(msg.sender, _amount);
         //send user their NFTs
-        uint initialBal = userNFTIds[msg.sender].length;
         require(_amount <= initialBal, "_amount excedes balance");
         for(uint i=1; i<=_amount; i++){
             MerakiToken.safeTransferFrom(address(this), msg.sender, userNFTIds[msg.sender][initialBal - i]);
@@ -143,5 +143,9 @@ contract Olympus is RewardDistributor, ERC721Holder{
 
     function totalAmountDeposited() public view override returns(uint){
         return totalDeposits;
+    }
+
+    function decimals() public view override returns(uint8){
+        return 0;
     }
 }

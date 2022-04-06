@@ -1,4 +1,4 @@
-import { Button, Col, Menu, Row, Card, Divider, Input } from "antd";
+import { Button, Col, Menu, Row, Card, Divider, Input, List, Statistic, Table } from "antd";
 import "antd/dist/antd.css";
 import {
   useBalance,
@@ -14,6 +14,9 @@ import { Link, Route, Switch, useLocation } from "react-router-dom";
 import "./App.css";
 import {
   Account,
+  Address,
+  Balance,
+  TokenBalance,
   Contract,
   Faucet,
   GasGauge,
@@ -31,6 +34,9 @@ import deployedContracts from "./contracts/hardhat_contracts.json";
 import { Transactor, Web3ModalSetup } from "./helpers";
 import { Home, ExampleUI, Hints, Subgraph } from "./views";
 import { useStaticJsonRPC } from "./hooks";
+import Stake from "./components/Stake.jsx";
+
+import dummy from './dummychart.png';
 
 const { ethers, utils } = require("ethers");
 /*
@@ -169,9 +175,6 @@ function App(props) {
   // keep track of a variable from the contract in the local React state:
   const purpose = useContractReader(readContracts, "YourContract", "purpose");
 
-  const userBal = useContractReader(readContracts, "TestMeraki", "balanceOf", [address]);
-  console.log("Meraki Token Balance: ", userBal);
-
   /*
   const addressFromENS = useResolveName(mainnetProvider, "austingriffith.eth");
   console.log("🏷 Resolved austingriffith.eth as:",addressFromENS)
@@ -247,6 +250,15 @@ function App(props) {
 
   const faucetAvailable = localProvider && localProvider.connection && targetNetwork.name.indexOf("local") !== -1;
 
+  const userBal = useContractReader(readContracts, "TestMeraki", "balanceOf", [address]);
+  console.log("Meraki Token Balance: ", userBal);
+
+  const stakedBal = useContractReader(readContracts, "Olympus", "balanceOf", [address]);
+  console.log("Staked Token Balance: ", stakedBal);
+
+  const olympusTokenBalance = useContractReader(readContracts, "Olympus", "totalAmountDeposited");
+  console.log("olympusTokenBalance:", olympusTokenBalance ? olympusTokenBalance : "...");
+
   const olympusAddress = readContracts && readContracts.Olympus && readContracts.Olympus.address;
 
   const olympusApproval = useContractReader(readContracts, "TestMeraki", "isApprovedForAll", [
@@ -265,8 +277,51 @@ function App(props) {
   },[idsToStake, readContracts])
   console.log("isOlympusApproved",isOlympusApproved)
 
+  const [requestOut, setRequestOut] = useState({
+    valid: false,
+    value: ''
+  });
+  const [isRequestValid, setIsRequestValid] = useState();
+
+  useEffect(()=>{
+    console.log("requestOut",requestOut.value)
+    const requestOutBN = requestOut.valid ? requestOut.value : 0;
+    console.log("requestOutBN",requestOutBN)
+    setIsRequestValid(stakedBal && stakedBal != '' && stakedBal.gte(requestOutBN))
+  },[requestOut, readContracts])
+  console.log("isRequestValid",isRequestValid)
+
   const [buying, setBuying] = useState();
 
+  //const rewardsOwed = useContractReader(readContracts, "Olympus", "pendingRewards", [address]);
+  //console.log("Rewards Owed: ", rewardsOwed);
+
+  const grossReward = useContractReader(readContracts, "Olympus", "rewardStateUpdate", [address]);
+  const grossNumber = grossReward ? ethers.utils.formatEther(grossReward) : 0;
+  //const grossNumber = formatGross && formatGross.toNumber && formatGross.toNumber();
+  console.log("Gross rewards: ", grossNumber);
+  const [yourRewards, setYourRewards] = useState();
+
+  useEffect(() => {
+    const updateYourRewards = async () => {
+      const rewardUpdate = [];
+      try{
+        const rewards = await readContracts.Olympus.pendingRewards(address);
+        for (let i = 0; i < rewards.length; i++) {
+            console.log("Reward Token: ", rewards[i].token);
+            console.log("Balance: ", rewards[i].amount);
+            let bal = ethers.utils.formatEther(rewards[i].amount);
+            bal = parseFloat(bal).toFixed(2);
+            rewardUpdate.push({token: rewards[i].token, amount: bal});
+            //rewardUpdate.push({token: rewards[i].token, amount: rewards[i].amount});
+        }        
+      } catch (e){
+        console.log(e);
+      }
+      setYourRewards(rewardUpdate);
+    };
+    updateYourRewards();
+  }, [address, grossNumber]);
 
   return (
     <div className="App">
@@ -377,7 +432,132 @@ function App(props) {
                     }
               </Card>
           </div>
-                
+          <Divider />
+          <div style={{ padding: 8, marginTop: 32, width: 300, margin: "auto" }}>
+              <Card title="Unstake Meraki Tokens">
+                <div style={{ padding: 8 }}>{stakedBal && stakedBal.toNumber()} Staked Balance</div>
+
+                <div style={{ padding: 8 }}>
+                  <Input
+                    style={{ textAlign: "center" }}
+                    placeholder={"Amount of tokens to remove"}
+                    value={requestOut.value}
+                    onChange={e => {
+                      const newValue = e.target.value;
+                      const req = {
+                        value: newValue,
+                        valid: /^\d*\.?\d+$/.test(newValue)//wtf does this do?
+                      }
+                      setRequestOut(req)
+                    }}
+                  />
+                </div>
+                {isRequestValid?
+
+                  <div style={{ padding: 8 }}>
+                    <Button
+                      type={"primary"}
+                      loading={buying}
+                      onClick={async () => {
+                        setBuying(true);
+                        await tx(writeContracts.Olympus.unstake(requestOut.value));
+                        setBuying(false);
+                        setRequestOut('');
+                      }}
+                      disabled={!requestOut.valid}
+                    >
+                      Unstake Tokens
+                    </Button>
+                  </div>
+                  :
+                  <div style={{ padding: 8 }}>
+                    <Button
+                      disabled={true}
+                      type={"primary"}
+                    >
+                      Unstake Tokens
+                    </Button>
+                  </div>
+                    }
+              </Card>
+          </div>
+          <Row gutter={[16,24]}>
+            <Col span={16}><Card>Graph showing sMRKI overtime, and fees earned overtime</Card></Col>
+            <Col span={8}>
+              <Stake 
+                signer={userSigner}
+                provider={localProvider}
+                address={address}
+                contractConfig={contractConfig}
+                chainId={localChainId}
+                tx={tx}
+              />
+            </Col>
+          </Row>
+          <Row gutter={[16,24]} justify="center">
+            <Col span={5}><Card><Statistic title="APR(monthly)" value={29.37} suffix={"%"} /></Card></Col>
+            <Col span={5}><Card><Statistic title="My Cumulative Rewards" value={1540510} prefix={"$"} /></Card></Col>
+            <Col span={5}><Card><Statistic title="MRKI Floor Price" value={173.14} prefix={"$"} /></Card></Col>
+            <Col span={5}><Card><Statistic title="My Deposit Value" value={173140} prefix={"$"} /></Card></Col>
+          </Row>
+          <Row gutter={[16,24]} justify="center">
+            <Col span={12}>
+              <Card title="My Rewards">
+                <Table 
+                  columns={[{title: 'Token', key: 'token'},{title: 'Amount', key: 'amount'},{title: 'Value', key: 'value'}]}
+                  dataSource={[{key: '1', token: 'wETH', amount: '2.0124', value: '7,054'}]}
+                  //renderItem={item => {
+                  //  return (
+                  //    <List.Item key={item.key}>
+                  //      <Address value={item.token} ensProvider={mainnetProvider} fontSize={16} />
+                  //      {/*<Balance balance={item.amount} />*/}
+                  //      {item.amount}
+                  //    </List.Item>
+                  //  );
+                  //}}
+                />
+              </Card>
+            </Col>
+            <Col span={12}>
+              <Card title="My Airdrops">
+                <Table 
+                  columns={[{title: 'Token', key: 'token'},{title: 'Amount', key: 'amount'}]}
+                  dataSource={[{key: '1', token: 'wETH', amount: '2.0124'}]}
+                  //renderItem={item => {
+                  //  return (
+                  //    <List.Item key={item.key}>
+                  //      <Address value={item.token} ensProvider={mainnetProvider} fontSize={16} />
+                  //      {/*<Balance balance={item.amount} />*/}
+                  //      {item.amount}
+                  //    </List.Item>
+                  //  );
+                  //}}
+                />
+              </Card>
+            </Col>
+
+          </Row>
+          
+
+          <div style={{ padding: 8, marginTop: 32 }}>
+            <div>Total Meraki Staked:</div>
+            {olympusTokenBalance && olympusTokenBalance.toNumber()}
+          </div>
+          <div style={{ width: 500, margin: "auto", marginTop: 64 }}>
+              <div>Rewards Available</div>
+              <List
+                dataSource={yourRewards}
+                renderItem={item => {
+                  return (
+                    <List.Item key={item.token}>
+                      <Address value={item.token} ensProvider={mainnetProvider} fontSize={16} />
+                      {/*<Balance balance={item.amount} />*/}
+                      {item.amount}
+                    </List.Item>
+                  );
+                }}
+              />
+            </div>
         </Route>
         <Route exact path="/debug">
           {/*
@@ -406,6 +586,16 @@ function App(props) {
           />
           <Contract
             name="OlympusAggregator"
+            price={price}
+            signer={userSigner}
+            provider={localProvider}
+            address={address}
+            blockExplorer={blockExplorer}
+            contractConfig={contractConfig}
+          />
+
+          <Contract
+            name="WETH"
             price={price}
             signer={userSigner}
             provider={localProvider}

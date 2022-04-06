@@ -17,18 +17,13 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   const { deployer } = await getNamedAccounts();
   const chainId = await getChainId();
 
-  const meraki = await ethers.getContract("TestMeraki", deployer);
-
-  await deploy("Olympus", {
+  await deploy("WETH", {
     // Learn more about args here: https://www.npmjs.com/package/hardhat-deploy#deploymentsdeploy
     from: deployer,
-    args: [ meraki.address, 5400 ],
+    //args: [ olympus.address ],
     log: true,
     waitConfirmations: 5,
   });
-
-  const olympus = await ethers.getContract("Olympus", deployer);
-  await olympus.transferOwnership("0x2A4388e027995F4D7a7AE1b69AC07Fb3d3c4B323");
 
   /*  await YourContract.setPurpose("Hello");
   
@@ -79,4 +74,4 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   //   console.error(error);
   // }
 };
-module.exports.tags = ["Olympus"];
+module.exports.tags = ["WETH"];
