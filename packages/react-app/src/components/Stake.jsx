@@ -142,7 +142,7 @@ export default function Stake({
                               const newValue = e.target.value.replace(/\D/g, '');
                               const req = {
                                 value: newValue,
-                                valid: /^\d*\.?\d+$/.test(newValue)//wtf does this do?
+                                valid: /^\d*\.?\d+$/.test(newValue)//wtf does this do? CAN CHANGE TO ONLY ALLOW DIGITS
                               }
                               setRequestOut(req)
                             }}

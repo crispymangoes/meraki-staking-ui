@@ -1,5 +1,5 @@
 import { gql, useQuery } from "@apollo/client";
-import { Button, Input, Table, Typography } from "antd";
+import { Button, Input, Table, Typography, Card } from "antd";
 import "antd/dist/antd.css";
 import GraphiQL from "graphiql";
 import "graphiql/graphiql.min.css";
@@ -26,40 +26,29 @@ function Subgraph(props) {
 
   const EXAMPLE_GRAPHQL = `
   {
-    purposes(first: 25, orderBy: createdAt, orderDirection: desc) {
+    users {
       id
-      purpose
-      createdAt
-      sender {
-        id
-      }
-    }
-    senders {
-      id
-      address
-      purposeCount
+      tokens
     }
   }
   `;
   const EXAMPLE_GQL = gql(EXAMPLE_GRAPHQL);
   const { loading, data } = useQuery(EXAMPLE_GQL, { pollInterval: 2500 });
 
+  //let example = data.users.tokens[0];
+  //example = Object.keys(example).map((key) => [Number(key)])
+
   const purposeColumns = [
     {
-      title: "Purpose",
-      dataIndex: "purpose",
-      key: "purpose",
-    },
-    {
-      title: "Sender",
+      title: "User",
       key: "id",
-      render: record => <Address value={record.sender.id} ensProvider={props.mainnetProvider} fontSize={16} />,
+      render: record => <Address value={record.id} ensProvider={props.mainnetProvider} fontSize={16} />,
     },
     {
-      title: "createdAt",
-      key: "createdAt",
-      dataIndex: "createdAt",
-      render: d => new Date(d * 1000).toISOString(),
+      title: "Tokens",
+      dataIndex: "tokens",
+      key: "tokens",
+      render: d => String(Object.keys(d)),//JSON.stringify(d, null, 4).split(","),
     },
   ];
 
@@ -180,7 +169,7 @@ function Subgraph(props) {
         </div>
 
         {data ? (
-          <Table dataSource={data.purposes} columns={purposeColumns} rowKey="id" />
+          <Table dataSource={data.users} columns={purposeColumns} rowKey="id" />
         ) : (
           <Typography>{loading ? "Loading..." : deployWarning}</Typography>
         )}

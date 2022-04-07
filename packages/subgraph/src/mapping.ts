@@ -1,33 +1,43 @@
 import { BigInt, Address } from "@graphprotocol/graph-ts";
 import {
-  YourContract,
-  SetPurpose,
-} from "../generated/YourContract/YourContract";
-import { Purpose, Sender } from "../generated/schema";
+  TestMeraki,
+  Transfer,
+} from "../generated/TestMeraki/TestMeraki";
+import { User } from "../generated/schema";
 
-export function handleSetPurpose(event: SetPurpose): void {
-  let senderString = event.params.sender.toHexString();
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
-  let sender = Sender.load(senderString);
+export function handleTransfer(event: Transfer): void {
+  let id0 = event.params.from.toHex()
+  let id1 = event.params.to.toHex()
 
-  if (sender === null) {
-    sender = new Sender(senderString);
-    sender.address = event.params.sender;
-    sender.createdAt = event.block.timestamp;
-    sender.purposeCount = BigInt.fromI32(1);
-  } else {
-    sender.purposeCount = sender.purposeCount.plus(BigInt.fromI32(1));
+  let from = User.load(id0)
+  if(from == null){
+    from = new User(id0)
+    from.tokens = []
   }
 
-  let purpose = new Purpose(
-    event.transaction.hash.toHex() + "-" + event.logIndex.toString()
-  );
+  let to = User.load(id1)
+  if(to == null){
+    to = new User(id1)
+    to.tokens = []
+  }
 
-  purpose.purpose = event.params.purpose;
-  purpose.sender = senderString;
-  purpose.createdAt = event.block.timestamp;
-  purpose.transactionHash = event.transaction.hash.toHex();
+  let toTokens = to.tokens
+  let fromTokens = from.tokens
+  //check if we need to remove a token from from
+  if (event.params.from.toHexString() != ZERO_ADDRESS){
+    let elementToMove = fromTokens.pop() //remove last element from the array, and store it
+    let indexToRemove = fromTokens.indexOf(event.params.tokenId) //find element to overwrite
+    if(indexToRemove != -1){
+      fromTokens[indexToRemove] = elementToMove; //overwrite element
+    }
+    //from.tokens = fromTokens
+  }
+  toTokens.push(event.params.tokenId)
+  to.tokens = toTokens
+  //to.tokens.push(event.params.tokenId)
 
-  purpose.save();
-  sender.save();
+  from.save()
+  to.save()
 }
