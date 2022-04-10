@@ -36,7 +36,7 @@ import { Home, ExampleUI, Hints, Subgraph } from "./views";
 import { useStaticJsonRPC } from "./hooks";
 import Stake from "./components/Stake.jsx";
 
-import dummy from './dummychart.png';
+import { useMoralisWeb3Api } from "react-moralis";
 
 const { ethers, utils } = require("ethers");
 /*
@@ -323,6 +323,17 @@ function App(props) {
     updateYourRewards();
   }, [address, grossNumber]);
 
+  const Web3Api = useMoralisWeb3Api();
+  const fetchNFTs = async () => {
+    // get polygon NFTs for address
+    const options = {
+      chain: "polygon",
+      address: "0xa5E5860B34ac0C55884F2D0E9576d545e1c7Dfd4", //can use address variable here
+    };
+    const polygonNFTs = await Web3Api.account.getNFTs(options);
+    console.log(polygonNFTs);
+  };
+
   return (
     <div className="App">
       {/* ✏️ Edit the header and change the title to your project name */}
@@ -506,6 +517,12 @@ function App(props) {
           />
         </Route>
         <Route path="/mainnetdai">
+        <Button
+              onClick={fetchNFTs}
+              size="large"
+              shape="round"
+            >Howdy
+            </Button>
           <Contract
             name="DAI"
             customContract={mainnetContracts && mainnetContracts.contracts && mainnetContracts.contracts.DAI}

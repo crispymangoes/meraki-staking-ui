@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import ReactDOM from "react-dom";
 import App from "./App";
 import "./index.css";
+import { MoralisProvider } from "react-moralis";
 
 const themes = {
   dark: `${process.env.PUBLIC_URL}/dark-theme.css`,
@@ -24,7 +25,9 @@ ReactDOM.render(
   <ApolloProvider client={client}>
     <ThemeSwitcherProvider themeMap={themes} defaultTheme={prevTheme || "light"}>
       <BrowserRouter>
-        <App subgraphUri={subgraphUri} />
+        <MoralisProvider serverUrl="https://ntrqplxc6aqg.usemoralis.com:2053/server" appId="YczqpmJuxOJuiUtUY2BGIPvlxOyneNUC9I4564k7">
+          <App subgraphUri={subgraphUri} />
+        </MoralisProvider>
       </BrowserRouter>
     </ThemeSwitcherProvider>
   </ApolloProvider>,
