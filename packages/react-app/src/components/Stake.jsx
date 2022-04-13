@@ -12,6 +12,8 @@ import {
     useUserProviderAndSigner,
   } from "eth-hooks";
 
+import { useMoralisWeb3Api } from "react-moralis";
+
 export default function Stake({
     signer,
     provider,
@@ -38,6 +40,7 @@ export default function Stake({
     share = share.toFixed(2);
 
     const olympusAddress = readContracts && readContracts.Olympus && readContracts.Olympus.address;
+    const merakiAddress = readContracts && readContracts.TestMeraki && readContracts.TestMeraki.address;
 
     const olympusApproval = useContractReader(readContracts, "TestMeraki", "isApprovedForAll", [
         address, olympusAddress
@@ -73,12 +76,38 @@ export default function Stake({
 
       const [buying, setBuying] = useState();
 
+      const [querying, setQuerying] = useState();
+
       const [choice, setChoice] = useState();
 
       function handleChoice(e) {
           setChoice(e.target.value);
           console.log("Choice is set to: ", e.target.value);
       }
+
+      const Web3Api = useMoralisWeb3Api();
+      const fetchNFTs = async () => {
+      // get polygon NFTs for address
+      const options = {
+        chain: "polygon",
+        address: "0xa5E5860B34ac0C55884F2D0E9576d545e1c7Dfd4", //can use address variable here
+      };
+      const polygonNFTs = await Web3Api.account.getNFTs(options);
+      let userTokens = ""
+      for(let i=0; i<polygonNFTs.result.length; i++){
+        if(polygonNFTs.result[i].token_address == merakiAddress){
+          if(i ==polygonNFTs.result.length-1){
+            userTokens = userTokens.concat(polygonNFTs.result[i].token_id);
+          }
+          else{
+            userTokens = userTokens.concat(polygonNFTs.result[i].token_id,",");
+          }
+        }
+      }
+      console.log(userTokens);
+      return "0,1,2,3,4,5,6,7,8,9"
+      //return userTokens;
+  };
 
     return(
         <Card title="Overview">
@@ -104,13 +133,35 @@ export default function Stake({
                 <Col span={10}>
                     {
                         choice?
-                            <div>
-                                Can Stake {userBal} sMRKI
-                            </div>
+                            <Button
+                            type={"text"}
+                            loading={querying}
+                            onClick={async () => {
+                              setQuerying(true);
+                              const ids = fetchNFTs()
+                              await tx(writeContracts.Olympus.stake((await ids).split(",")));
+                              setQuerying(false);
+                              setIdsToStake([]);
+                            }}
+                            disabled={userBal == 0}
+                          >
+                            Stake All
+                          </Button>
+                            
                         :
-                        <div>
-                            Can Unstake {stakedBal ? stakedBal.toNumber() : 0} sMRKI
-                        </div>
+                        <Button
+                            type={"text"}
+                            loading={querying}
+                            onClick={async () => {
+                              setQuerying(true);
+                              await tx(writeContracts.Olympus.unstake(stakedBal ? stakedBal.toNumber() : 0));
+                              setQuerying(false);
+                              setRequestOut('');
+                            }}
+                            disabled={!stakedBal || stakedBal.toNumber() == 0}
+                          >
+                            Unstake All
+                          </Button>
                     }
                 </Col>
             </Row>
